@@ -19,7 +19,6 @@
 (defpackage #:odbc-dbi
   (:use #:cl #:odbc)
   (:export
-   #:*DISABLE-CHUNK-READ-P*
    #:bind-parameter
    #:close-query
    #:connect
@@ -49,7 +48,7 @@
 
 (in-package #:odbc-dbi)
 
-(defparameter *DISABLE-CHUNK-READ-P* NIL
+(defparameter odbc:*DISABLE-CHUNK-READ-P* NIL
   "Variable which, when non-NIL, specifies that all reads must use
 SQLBindCol, not SQLGetData.  This is a workaround for bad MS-SQL ODBC
 drivers.")

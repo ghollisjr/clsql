@@ -21,6 +21,7 @@
   (:export
      #:database-library-loaded
 
+     #:*DISABLE-CHUNK-READ-P*
      #:*null*
      #:+null-ptr+
      #:+max-precision+
