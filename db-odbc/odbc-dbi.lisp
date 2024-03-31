@@ -19,6 +19,7 @@
 (defpackage #:odbc-dbi
   (:use #:cl #:odbc)
   (:export
+   #:*DISABLE-CHUNK-READ-P*
    #:bind-parameter
    #:close-query
    #:connect
