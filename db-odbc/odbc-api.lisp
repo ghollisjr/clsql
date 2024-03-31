@@ -868,7 +868,6 @@ May be locally bound to something else if a certain type is necessary.")
                             out-len-ptr result-type)
   (declare (type long-ptr-type out-len-ptr)
            (ignore result-type))
-
   (let* ((res (%sql-get-data hstmt column-nr c-type data-ptr
                              +max-precision+ out-len-ptr))
          (out-len (get-cast-long out-len-ptr))

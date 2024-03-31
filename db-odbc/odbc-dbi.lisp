@@ -48,6 +48,11 @@
 
 (in-package #:odbc-dbi)
 
+(defparameter *DISABLE-CHUNK-READ-P* NIL
+  "Variable which, when non-NIL, specifies that all reads must use
+SQLBindCol, not SQLGetData.  This is a workaround for bad MS-SQL ODBC
+drivers.")
+
 (defgeneric terminate (src))
 (defgeneric db-open-query (src query-expression
                                &key arglen col-positions result-types width
@@ -331,7 +336,8 @@ the query against." ))
                         collect
                           (progn
                             (incf rows-fetched)
-                            (cond ((< 0 precision (query-width query))
+                            (cond ((or *DISABLE-CHUNK-READ-P*
+                                       (< 0 precision (query-width query)))
                                    (read-data data-ptr c-type sql-type out-len-ptr result-type))
                                   ((zerop (get-cast-long out-len-ptr))
                                    nil)
@@ -438,6 +444,8 @@ This makes the functions db-execute-command and db-query thread safe."
                   ;; allocate space to bind result rows to
                   (multiple-value-bind (c-type data-ptr out-len-ptr size long-p)
                                        (%allocate-bindings sql-type precision)
+                    (when *DISABLE-CHUNK-READ-P*
+                      (setf long-p nil))
                     (if long-p ;; if long-p we fetch in chunks with %sql-get-data but must ensure that out_len_ptr is non zero
                         (setf (uffi:deref-pointer out-len-ptr #.odbc::$ODBC-LONG-TYPE) #.odbc::$SQL_NO_TOTAL)
                       (%bind-column hstmt col-nr c-type data-ptr (1+ size) out-len-ptr))
@@ -519,7 +527,8 @@ This makes the functions db-execute-command and db-query thread safe."
            collect
              (let ((precision (aref column-precisions col-nr))
                    (sql-type (aref column-sql-types col-nr)))
-               (cond ((or (< 0 precision (query-width query))
+               (cond ((or *DISABLE-CHUNK-READ-P*
+                          (< 0 precision (query-width query))
                           (and (zerop precision) (not (find sql-type '($SQL_C_CHAR)))))
                       (read-data (aref column-data-ptrs col-nr)
                                  (aref column-c-types col-nr)
