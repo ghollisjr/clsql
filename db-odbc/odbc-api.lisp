@@ -579,6 +579,7 @@ May be locally bound to something else if a certain type is necessary.")
     (#.$SQL_DATE $SQL_C_DATE)
     (#.$SQL_TIME $SQL_C_TIME)
     (#.$SQL_TIMESTAMP $SQL_C_TIMESTAMP)
+    (#.$SQL_MSSQL2008_TIME $SQL_C_TIMESTAMP)
     (#.$SQL_TYPE_DATE $SQL_C_TYPE_DATE)
     (#.$SQL_TYPE_TIME $SQL_C_TYPE_TIME)
     (#.$SQL_TYPE_TIMESTAMP $SQL_C_TYPE_TIMESTAMP)
@@ -675,7 +676,19 @@ May be locally bound to something else if a certain type is necessary.")
                       ((#.$SQL_C_TIME #.$SQL_C_TYPE_TIME)
 		       (funcall *time-format* (time-to-clsql-time data-ptr)))
                       ((#.$SQL_C_TIMESTAMP #.$SQL_C_TYPE_TIMESTAMP)
-		       (funcall *time-format* (timestamp-to-clsql-time data-ptr)))
+                       (case sql-type
+                         ;; special case for MS-SQL 2008 time type
+                         (#.$SQL_MSSQL2008_TIME
+                          (let ((time (timestamp-to-clsql-time data-ptr)))
+                            (multiple-value-bind (hh mm ss)
+                                (clsql-sys::time-hms time)
+                              (let ((usec (clsql-sys::time-usec time))
+                                    (leftover
+                                      (clsql-sys::time-leftover time)))
+                                (format nil "~2,'0D:~2,'0D:~2,'0D.~6,'0D~@[~D~]"
+                                        hh mm ss usec leftover)))))
+                         (t 
+		          (funcall *time-format* (timestamp-to-clsql-time data-ptr)))))
                       (#.$SQL_INTEGER
                        (get-cast-int data-ptr))
                       (#.$SQL_C_FLOAT
@@ -913,15 +926,20 @@ May be locally bound to something else if a certain type is necessary.")
 
 (defun timestamp-to-clsql-time (ptr)
   (declare (type c-timestamp-ptr-type ptr))
-  (clsql-sys:make-time
-   :second (get-slot-value ptr 'sql-c-timestamp 'second)
-   :minute (get-slot-value ptr 'sql-c-timestamp 'minute)
-   :hour (get-slot-value ptr 'sql-c-timestamp 'hour)
-   :day (get-slot-value ptr 'sql-c-timestamp 'day)
-   :month (get-slot-value ptr 'sql-c-timestamp 'month)
-   :year (get-slot-value ptr 'sql-c-timestamp 'year)
-   :usec (let ((frac (get-slot-value ptr 'sql-c-timestamp 'fraction)))
-	   (if frac (/ frac 1000) 0))))
+  (let ((frac (get-slot-value ptr 'sql-c-timestamp 'fraction)))
+    (multiple-value-bind (usec leftover)
+        (if frac
+            (truncate frac 1000)
+            (values 0 nil))
+      (clsql-sys:make-time
+       :second (get-slot-value ptr 'sql-c-timestamp 'second)
+       :minute (get-slot-value ptr 'sql-c-timestamp 'minute)
+       :hour (get-slot-value ptr 'sql-c-timestamp 'hour)
+       :day (get-slot-value ptr 'sql-c-timestamp 'day)
+       :month (get-slot-value ptr 'sql-c-timestamp 'month)
+       :year (get-slot-value ptr 'sql-c-timestamp 'year)
+       :usec usec
+       :leftover leftover))))
 
 (defun universal-time-to-timestamp (time &optional (fraction 0))
   "TODO: Dead function?"

@@ -892,6 +892,7 @@
 (defconstant $SQL_DATE 9)
 (defconstant $SQL_TIME 10)
 (defconstant $SQL_TIMESTAMP 11)
+(defconstant $SQL_MSSQL2008_TIME -154)
 (defconstant $SQL_LONGVARCHAR -1)
 (defconstant $SQL_BINARY -2)
 (defconstant $SQL_VARBINARY -3)

@@ -61,7 +61,8 @@
                       (:print-function %print-wall-time))
   (mjd 0 :type fixnum)
   (second 0 :type fixnum)
-  (usec 0 :type fixnum))
+  (usec 0 :type fixnum)
+  (leftover nil :type (or fixnum null)))
 
 (defun %print-wall-time (time stream depth)
   (declare (ignore depth))
@@ -112,14 +113,16 @@
 ;; Constructors
 
 (defun make-time (&key (year 0) (month 1) (day 1) (hour 0) (minute 0)
-                       (second 0) (usec 0) (offset 0))
+                    (second 0) (usec 0) (offset 0)
+                    (leftover 0))
   (let ((mjd (gregorian-to-mjd month day year))
         (sec (+ (* hour 60 60)
                 (* minute 60)
                 second (- offset))))
     (multiple-value-bind (day-add raw-sec)
         (floor sec (* 60 60 24))
-      (%make-wall-time :mjd (+ mjd day-add) :second raw-sec :usec usec))))
+      (%make-wall-time :mjd (+ mjd day-add) :second raw-sec :usec usec
+                       :leftover leftover))))
 
 (defun make-date (&key (year 0) (month 1) (day 1) (hour 0) (minute 0)
                        (second 0) (usec 0) (offset 0))
@@ -839,11 +842,10 @@ with the given options"
 		   (pretty-time hour minute)
 		   month day year))
         ((:iso :iso8601) (iso-timestring time :stream stream))
-        (t (format stream "~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D.~6,'0D"
+        (t (format stream "~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D~A~2,'0D.~6,'0D~@[~D~]"
 		   year date-separator month date-separator day
 		   internal-separator hour time-separator minute time-separator
-		   second usec)
-	   )))))
+		   second usec (time-leftover time)))))))
 
 (defun pretty-time (hour minute)
   (cond
